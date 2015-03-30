@@ -1,4 +1,4 @@
-package net.darkslave.stm.server.netty.udp;
+package net.darkslave.stm.server.simple.udp;
 
 import java.io.IOException;
 import net.darkslave.stm.core.Server;
@@ -8,11 +8,11 @@ import net.darkslave.stm.core.ServerFactory;
 
 
 
-public class UdpServerFactory implements ServerFactory {
+public class ServerFactoryImpl implements ServerFactory {
 
     @Override
     public Server create(ServerConfig config) throws IOException {
-        return new UdpServer(config);
+        return new ServerImpl(config);
     }
 
 }

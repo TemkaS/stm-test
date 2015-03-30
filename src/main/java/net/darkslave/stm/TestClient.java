@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 import net.darkslave.prop.PropertyFilePresenter;
 import net.darkslave.stm.core.Client;
 import net.darkslave.stm.core.ClientConfig;
+import net.darkslave.stm.proto.Message;
 
 
 
@@ -38,7 +39,7 @@ public class TestClient {
                         int index = config.getMessages();
 
                         while (!Thread.interrupted() && --index >= 0) {
-                            client.send(name, index);
+                            client.send(new Message(name, index));
                             count.incrementAndGet();
                         }
 

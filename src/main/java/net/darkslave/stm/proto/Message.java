@@ -36,24 +36,19 @@ public class Message {
 
 
     public static byte[] encode(Message source) throws IOException {
-        return encode(source.getParam(), source.getValue());
-    }
-
-
-    public static byte[] encode(String param, double value) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream(512);
         DataOutput dos = new DataOutputStream(out);
 
         dos.writeShort(MARKER);
-        dos.writeUTF(param);
-        dos.writeDouble(value);
+        dos.writeUTF(source.getParam());
+        dos.writeDouble(source.getValue());
 
         return out.toByteArray();
     }
 
 
-    public static Message decode(byte[] source) throws IOException {
-        ByteArrayInputStream inp = new ByteArrayInputStream(source);
+    public static Message decode(byte[] source, int length) throws IOException {
+        ByteArrayInputStream inp = new ByteArrayInputStream(source, 0, length);
         DataInput dis = new DataInputStream(inp);
 
         short marker = dis.readShort();
@@ -66,6 +61,10 @@ public class Message {
         return new Message(param, value);
     }
 
+
+    public static Message decode(byte[] source) throws IOException {
+        return decode(source, source.length);
+    }
 
 
 

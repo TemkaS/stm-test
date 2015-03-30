@@ -8,11 +8,11 @@ import net.darkslave.stm.core.ClientFactory;
 
 
 
-public class UdpClientFactory implements ClientFactory {
+public class ClientFactoryImpl implements ClientFactory {
 
     @Override
     public Client create(ClientConfig config) throws IOException {
-        return new UdpClient(config);
+        return new ClientImpl(config);
     }
 
 }

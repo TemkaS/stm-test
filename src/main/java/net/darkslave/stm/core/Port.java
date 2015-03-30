@@ -1,20 +1,17 @@
 package net.darkslave.stm.core;
 
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
 import net.darkslave.util.StringParser;
 
 
 
 
-public abstract class Port {
+public abstract class Port implements Iterable<Integer> {
 
 
     public abstract int get();
-
-
-    public abstract IntStream stream();
-
 
 
     public static Port parse(String source) {
@@ -34,7 +31,7 @@ public abstract class Port {
         Integer lower = StringParser.toInteger(parts[0], null);
         Integer upper = StringParser.toInteger(parts[1], null);
 
-        if (lower == null || upper == null)
+        if (lower == null || upper == null || lower > upper)
             throw new IllegalArgumentException("Port `" + source + "` is not valid");
 
         return new RangedPort(lower, upper);
@@ -45,23 +42,23 @@ public abstract class Port {
     private static class RangedPort extends Port {
         private final int lower;
         private final int delta;
-        private final AtomicInteger counter;
+        private final AtomicInteger index;
 
         public RangedPort(int lower, int upper) {
-            this.lower   = lower;
-            this.delta   = upper - lower + 1;
-            this.counter = new AtomicInteger(0);
+            this.lower = lower;
+            this.delta = upper - lower + 1;
+            this.index = new AtomicInteger(0);
         }
 
         @Override
         public int get() {
-            int d = counter.getAndIncrement() % delta;
+            int d = index.getAndIncrement() % delta;
             return d >= 0 ? lower + d : lower - d;
         }
 
         @Override
-        public IntStream stream() {
-            return IntStream.range(lower, lower + delta);
+        public Iterator<Integer> iterator() {
+            return new RangedIntIterator(lower, lower + delta);
         }
 
     }
@@ -81,8 +78,57 @@ public abstract class Port {
         }
 
         @Override
-        public IntStream stream() {
-            return IntStream.of(port);
+        public Iterator<Integer> iterator() {
+            return new SingleIntIterator(port);
+        }
+
+    }
+
+
+
+    private static class SingleIntIterator implements Iterator<Integer> {
+        private final int value;
+        private boolean hasNext;
+
+        public SingleIntIterator(int value) {
+            this.value   = value;
+            this.hasNext = true;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return hasNext;
+        }
+
+        @Override
+        public Integer next() {
+            if (!hasNext)
+                throw new NoSuchElementException();
+            hasNext = false;
+            return value;
+        }
+
+    }
+
+    private static class RangedIntIterator implements Iterator<Integer> {
+        private final int limit;
+        private int index;
+
+        public RangedIntIterator(int lower, int limit) {
+            this.index = lower;
+            this.limit = limit;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index < limit;
+        }
+
+        @Override
+        public Integer next() {
+            if (index >= limit)
+                throw new NoSuchElementException();
+            return index++;
         }
 
     }

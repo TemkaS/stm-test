@@ -9,11 +9,11 @@ import net.darkslave.stm.proto.MessageHandler;
 
 
 
-public class UdpServer implements Server {
+public class ServerImpl implements Server {
     private final ServerConfig config;
 
 
-    public UdpServer(ServerConfig config) throws IOException {
+    public ServerImpl(ServerConfig config) throws IOException {
         this.config = config;
     }
 

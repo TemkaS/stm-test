@@ -11,25 +11,25 @@ import net.darkslave.stm.proto.Message;
 
 
 
-public class UdpClient implements Client {
+public class ClientImpl implements Client {
     private final ClientConfig config;
-    private final DatagramSocket socket;
+    private DatagramSocket socket;
 
 
-    public UdpClient(ClientConfig config) throws IOException {
+    public ClientImpl(ClientConfig config) throws IOException {
         this.config = config;
-        this.socket = new DatagramSocket();
     }
 
 
     @Override
-    public void init() {
+    public void init() throws IOException {
+        socket = new DatagramSocket();
     }
 
 
     @Override
-    public void send(String param, double value) throws IOException {
-        byte[] buffer = Message.encode(param, value);
+    public void send(Message messg) throws IOException {
+        byte[] buffer = Message.encode(messg);
 
         DatagramPacket packet = new DatagramPacket(
                 buffer,
@@ -44,7 +44,8 @@ public class UdpClient implements Client {
 
     @Override
     public void close() throws IOException {
-        socket.close();
+        if (socket != null)
+            socket.close();
     }
 
 }

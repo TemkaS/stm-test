@@ -1,9 +1,9 @@
-package net.darkslave.stm.server.simple.udp;
+package net.darkslave.stm.server.simple.tcp;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
+import java.io.InputStream;
+import java.net.ServerSocket;
 import java.util.LinkedList;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
@@ -17,8 +17,8 @@ import net.darkslave.stm.proto.MessageHandler;
 
 
 
-public class UdpServer implements Server {
-    private static final Logger logger = LogManager.getLogger(UdpServer.class);
+public class ServerImpl implements Server {
+    private static final Logger logger = LogManager.getLogger(ServerImpl.class);
 
     private final ServerConfig config;
     private MessageHandler handler;
@@ -26,7 +26,7 @@ public class UdpServer implements Server {
     private final List<Worker> active;
 
 
-    public UdpServer(ServerConfig config) throws IOException {
+    public ServerImpl(ServerConfig config) throws IOException {
         this.config = config;
         this.active = new LinkedList<>();
     }
@@ -34,13 +34,15 @@ public class UdpServer implements Server {
 
     @Override
     public void start() throws IOException {
-        Worker worker = new Worker(config.getTargetPort().get(), handler);
+        for (Integer port : config.getTargetPort()) {
+            Worker worker = new Worker(port, handler);
 
-        Thread thread = new Thread(worker);
-        thread.setDaemon(true);
-        thread.start();
+            Thread thread = new Thread(worker);
+            thread.setDaemon(true);
+            thread.start();
 
-        active.add(worker);
+            active.add(worker);
+        }
     }
 
 
@@ -72,26 +74,20 @@ public class UdpServer implements Server {
 
         @Override
         public void run() {
-            DatagramSocket socket = null;
-
-            try {
-                socket = new DatagramSocket(port);
+            try (ServerSocket socket = new ServerSocket(port)) {
 
                 while (!Thread.interrupted() && active) {
-                    byte[] recv = new byte[4096];
-                    DatagramPacket packet = new DatagramPacket(recv, recv.length);
-                    socket.receive(packet);
+                    try (InputStream stream = socket.accept().getInputStream()) {
+                        byte[] recv = new byte[4096];
+                        int read = stream.read(recv);
 
-                    Message messg = Message.decode(packet.getData());
-                    handler.accept(messg);
+                        Message messg = Message.decode(recv, read);
+                        handler.accept(messg);
+                    }
                 }
 
             } catch (IOException e) {
                 logger.error(e);
-
-            } finally {
-                if (socket != null)
-                    socket.close();
             }
         }
 
