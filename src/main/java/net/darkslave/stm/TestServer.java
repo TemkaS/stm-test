@@ -29,9 +29,7 @@ public class TestServer {
 
             Server server = config.getServerFactory().create(config);
 
-            server.setHandler((Message messg) -> {
-                count.incrementAndGet();
-            });
+            server.setHandler((Message messg) -> count.incrementAndGet());
 
             server.start();
 

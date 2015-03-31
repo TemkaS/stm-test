@@ -7,8 +7,7 @@ import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
-
-
+import java.nio.ByteBuffer;
 
 
 public class Message {
@@ -66,6 +65,9 @@ public class Message {
         return decode(source, source.length);
     }
 
+    public static Message decode(ByteBuffer source) throws IOException {
+        return decode(source.array(), source.limit());
+    }
 
 
 }
