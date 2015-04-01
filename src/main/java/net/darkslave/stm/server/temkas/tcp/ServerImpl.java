@@ -1,12 +1,12 @@
 package net.darkslave.stm.server.temkas.tcp;
 
+
 import net.darkslave.stm.core.Server;
 import net.darkslave.stm.core.ServerConfig;
 import net.darkslave.stm.proto.Message;
 import net.darkslave.stm.proto.MessageHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -16,7 +16,9 @@ import java.nio.channels.*;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+
+
+
 
 /**
  *
@@ -31,10 +33,12 @@ public class ServerImpl implements Server {
 
     private final List<Worker> active;
 
+
     public ServerImpl(ServerConfig config) throws IOException {
         this.config = config;
         this.active = new LinkedList<>();
     }
+
 
     @Override
     public void start() throws IOException {
@@ -49,10 +53,12 @@ public class ServerImpl implements Server {
         }
     }
 
+
     @Override
     public void setHandler(MessageHandler handler) {
         this.handler = handler;
     }
+
 
     @Override
     public void close() throws IOException {
@@ -60,6 +66,7 @@ public class ServerImpl implements Server {
             worker.close();
         }
     }
+
 
     private static class Worker implements Runnable, Closeable {
 
@@ -123,6 +130,7 @@ public class ServerImpl implements Server {
             active = false;
         }
 
+
         private void close(SelectionKey key) throws IOException {
             SocketChannel sc = (SocketChannel) key.channel();
             key.cancel();
@@ -130,6 +138,7 @@ public class ServerImpl implements Server {
                 sc.close();
             }
         }
+
 
         private void read(SelectionKey key) throws IOException {
             SocketChannel chan = (SocketChannel) key.channel();
@@ -143,14 +152,16 @@ public class ServerImpl implements Server {
             }
         }
 
+
         private void accept(SelectionKey key) throws IOException {
             ServerSocketChannel ssc = (ServerSocketChannel) key.channel();
-            SocketChannel socketChannel = ssc.accept();
-            socketChannel.configureBlocking(false);
-            socketChannel.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
-            socketChannel.setOption(StandardSocketOptions.TCP_NODELAY, true);
-            socketChannel.register(selector, SelectionKey.OP_READ);
+            SocketChannel chan = ssc.accept();
+            chan.configureBlocking(false);
+            chan.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
+            chan.setOption(StandardSocketOptions.TCP_NODELAY, true);
+            chan.register(selector, SelectionKey.OP_READ);
         }
+
 
         private void connect(SelectionKey key) throws IOException {
             ((SocketChannel) key.channel()).finishConnect();
