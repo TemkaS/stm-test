@@ -1,13 +1,11 @@
 package net.darkslave.nio;
 
-import java.net.InetSocketAddress;
-
 
 
 
 public interface Server {
 
-    public InetSocketAddress address();
+    public void start();
 
     public void stop();
 

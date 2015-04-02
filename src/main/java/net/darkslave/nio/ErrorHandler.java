@@ -3,7 +3,7 @@ package net.darkslave.nio;
 
 
 @FunctionalInterface
-public interface ExceptionHandler {
+public interface ErrorHandler {
 
     public void handle(Exception e);
 

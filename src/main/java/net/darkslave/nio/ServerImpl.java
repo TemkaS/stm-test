@@ -3,6 +3,7 @@ package net.darkslave.nio;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -14,45 +15,54 @@ import java.util.concurrent.ExecutorService;
 
 
 public class ServerImpl implements Runnable, Server {
-    private final Selector selector;
-    private final ServerSocketChannel channel;
-
     private final InetSocketAddress address;
-    private final ExecutorService   workThreadPool;
-    private final ExceptionHandler  exceptionHandler;
-    private final RequestAcceptor   requestAcceptor;
-    private final RequestHandler    requestHandler;
+
+    private final ExecutorService bossThreadPool;
+    private final ExecutorService workThreadPool;
+
+    private final RequestAcceptor requestAcceptor;
+    private final RequestHandler  requestHandler;
+    private final ErrorHandler    errorHandler;
+
+    private final int pendingCount;
     private final int selectorDelay;
 
-    private volatile boolean started = false;
+    private volatile boolean  started = false;
 
 
-    public ServerImpl(Bootstrap config) throws IOException {
-        address = config.getAddress();
-        channel = ServerSocketChannel.open();
 
-        channel.configureBlocking(false);
-        channel.bind(address, config.getPendingCount());
+    ServerImpl(Bootstrap config) throws IOException {
+        if (config.getAddress() == null)
+            throw new IllegalStateException("Address is not defined");
 
-        try {
-            selector = Selector.open();
-        } catch (IOException e) {
-            throw Resources.close(e, channel);
-        }
+        if (config.getRequestHandler() == null)
+            throw new IllegalStateException("RequestHandler is not defined");
 
-        channel.register(selector, channel.validOps());
+        address  = config.getAddress();
 
-        workThreadPool   = config.getWorkThreadPool();
-        exceptionHandler = config.getExceptionHandler();
-        requestAcceptor  = config.getRequestAcceptor();
-        requestHandler   = config.getRequestHandler();
-        selectorDelay    = config.getSelectorDelay();
+        bossThreadPool = config.getBossThreadPool();
+        workThreadPool = config.getWorkThreadPool();
+
+        requestAcceptor = config.getRequestAcceptor();
+        requestHandler  = config.getRequestHandler();
+
+        errorHandler  = config.getErrorHandler();
+        pendingCount  = config.getPendingCount();
+        selectorDelay = config.getSelectorDelay();
     }
+
 
 
     @Override
     public void run() {
-        try {
+        try (
+            ServerSocketChannel channel = ServerSocketChannel.open();
+            Selector selector = Selector.open();
+        ) {
+            channel.configureBlocking(false);
+            channel.bind(address, pendingCount);
+            channel.register(selector, channel.validOps());
+
             started = true;
 
             while (started && !Thread.interrupted()) {
@@ -89,24 +99,18 @@ public class ServerImpl implements Runnable, Server {
 
             }
 
-        } catch (IOException | InterruptedException  e) {
-            // логируем ошибки
-            exceptionHandler.handle(e);
+        } catch (Exception  e) {
+            setLastError(e);
 
         } finally {
-            // закрываем ресурсы
-            IOException closed = Resources.close(channel, selector);
-
-            // логируем ошибки
-            if (closed != null)
-                exceptionHandler.handle(closed);
-
             started = false;
         }
     }
 
 
-    @SuppressWarnings("resource")
+    /**
+     * Создание нового соединения
+     */
     private void accept(SelectionKey serverKey) {
         SocketChannel chan = null;
         try {
@@ -117,20 +121,23 @@ public class ServerImpl implements Runnable, Server {
             // регистрируем в селекторе
             chan.register(serverKey.selector(), SelectionKey.OP_READ);
 
-        } catch (IOException e) {
-            // если канал успели открыть, закрываем
-            if (chan != null)
-                e = Resources.close(e, chan);
-            // логируем ошибки
-            exceptionHandler.handle(e);
+        } catch (Exception e) {
+            if (chan != null) {
+                closeChannel(e, chan);
+            } else {
+                setLastError(e);
+            }
         }
     }
 
 
-    @SuppressWarnings("resource")
+    /**
+     * Завершение подключения к клиенту
+     */
     private void connect(SelectionKey clientKey) {
-        SocketChannel chan = (SocketChannel) clientKey.channel();
         try {
+            SocketChannel chan = (SocketChannel) clientKey.channel();
+
             // завершаем соединение
             chan.finishConnect();
 
@@ -138,75 +145,124 @@ public class ServerImpl implements Runnable, Server {
             InetSocketAddress address = (InetSocketAddress) chan.getRemoteAddress();
 
             if (!requestAcceptor.accept(address)) {
-                clientKey.cancel();
-                chan.close();
+                cancelKey(null, clientKey);
                 return;
             }
 
             // создаем новую коннекцию запроса
-            Connection conn = new Connection();
+            Connection conn = new Connection(clientKey);
             clientKey.attach(conn);
 
+            // запускаем в отдельном потоке обработку запроса
             workThreadPool.execute(() -> {
+                Exception error = null;
                 try {
-                    // запускаем в отдельном потоке обработку запроса
                     requestHandler.handle(conn.getInputStream(), conn.getOutputStream());
-                } catch (IOException e) {
-                    // закрываем коннекцию и логируем ошибки
-                    exceptionHandler.handle(Resources.close(e, conn));
+                } catch (Exception e) {
+                    error = e;
+                } finally {
+                    cancelKey(error, clientKey);
                 }
             });
 
-        } catch (IOException e) {
-            // закрываем канал и логируем ошибки
-            exceptionHandler.handle(Resources.close(e, chan));
+        } catch (Exception e) {
+            cancelKey(e, clientKey);
         }
     }
 
 
-    @SuppressWarnings("resource")
     private void read(SelectionKey clientKey) {
-        SocketChannel chan = (SocketChannel) clientKey.channel();
         try {
+            SocketChannel chan = (SocketChannel) clientKey.channel();
+
             Connection conn = (Connection) clientKey.attachment();
             chan.read((ByteBuffer) null);
 
-        } catch (IOException e) {
-            // закрываем канал и логируем ошибки
-            exceptionHandler.handle(Resources.close(e, chan));
+        } catch (Exception e) {
+            cancelKey(e, clientKey);
         }
     }
 
 
-    @SuppressWarnings("resource")
     private void write(SelectionKey clientKey) {
-        SocketChannel chan = (SocketChannel) clientKey.channel();
         try {
+            SocketChannel chan = (SocketChannel) clientKey.channel();
+
             Connection conn = (Connection) clientKey.attachment();
             chan.write((ByteBuffer) null);
 
-        } catch (IOException e) {
-            // закрываем канал и логируем ошибки
-            exceptionHandler.handle(Resources.close(e, chan));
+        } catch (Exception e) {
+            cancelKey(e, clientKey);
         }
     }
 
 
-    @Override
-    public InetSocketAddress address() {
-        return address;
+    /**
+     *  Сброс ключа, закрытие канала и логирование ошибок
+     */
+    private void cancelKey(Exception result, SelectionKey clientKey) {
+        clientKey.cancel();
+        closeChannel(result, clientKey.channel());
     }
 
 
+    /**
+     *  Закрытие канала и логирование ошибок
+     */
+    private void closeChannel(Exception result, Channel channel) {
+        try {
+            channel.close();
+        } catch (Exception e) {
+            if (result != null) {
+                result.addSuppressed(e);
+            } else {
+                result = e;
+            }
+        } finally {
+            setLastError(result);
+        }
+    }
+
+
+    /**
+     * Логирование
+     */
+    private void setLastError(Exception value) {
+        if (value != null) {
+            errorHandler.handle(value);
+        }
+    }
+
+
+    /**
+     * Проверка флага запуска
+     */
+    @Override
+    public boolean started() {
+        return started;
+    }
+
+
+    /**
+     * Запуск сервера
+     */
+    @Override
+    public void start() {
+        if (!started) {
+            bossThreadPool.execute(this);
+        }
+    }
+
+
+    /**
+     * Остановка сервера
+     */
     @Override
     public void stop() {
         started = false;
     }
 
 
-    @Override
-    public boolean started() {
-        return started;
-    }
+
 
 }

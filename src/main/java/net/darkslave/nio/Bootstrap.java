@@ -14,35 +14,41 @@ import java.util.concurrent.Executors;
  *  Класс настроек и запуска сервера
  */
 public class Bootstrap {
-    public static final ExceptionHandler DEFAULT_EXCEPTION_HANDLER = (e) -> e.printStackTrace();
-    public static final RequestAcceptor DEFAULT_REQUEST_ACCEPTOR   = (a) -> true;
-
+    public static final ErrorHandler    DEFAULT_ERROR_HANDLER    = (e) -> e.printStackTrace();
+    public static final RequestAcceptor DEFAULT_REQUEST_ACCEPTOR = (a) -> true;
 
     private InetSocketAddress address;
 
     private ExecutorService   bossThreadPool;
     private ExecutorService   workThreadPool;
 
-    private ExceptionHandler  exceptionHandler;
-
     private RequestAcceptor   requestAcceptor;
     private RequestHandler    requestHandler;
+    private ErrorHandler      errorHandler;
 
     private int pendingCount  = 0;
-
     private int selectorDelay = 10;
 
 
     public Bootstrap() {
-        this.bossThreadPool = Executors.newSingleThreadExecutor();
-        this.workThreadPool = Executors.newWorkStealingPool();
-        this.exceptionHandler = DEFAULT_EXCEPTION_HANDLER;
-        this.requestAcceptor  = DEFAULT_REQUEST_ACCEPTOR;
+        this.bossThreadPool  = Executors.newSingleThreadExecutor();
+        this.workThreadPool  = Executors.newWorkStealingPool();
+        this.errorHandler    = DEFAULT_ERROR_HANDLER;
+        this.requestAcceptor = DEFAULT_REQUEST_ACCEPTOR;
     }
 
 
     InetSocketAddress getAddress() {
         return address;
+    }
+
+
+    /**
+     * Установка порта
+     */
+    public Bootstrap setAddress(int port) {
+        this.address = new InetSocketAddress(port);
+        return this;
     }
 
 
@@ -107,18 +113,18 @@ public class Bootstrap {
     }
 
 
-    ExceptionHandler getExceptionHandler() {
-        return exceptionHandler;
+    ErrorHandler getErrorHandler() {
+        return errorHandler;
     }
 
 
     /**
      * Установка логирования ошибок
      */
-    public Bootstrap setExceptionHandler(ExceptionHandler value) {
+    public Bootstrap setErrorHandler(ErrorHandler value) {
         if (value == null)
             throw new IllegalArgumentException("Parameter can't be null");
-        this.exceptionHandler = value;
+        this.errorHandler = value;
         return this;
     }
 
@@ -183,20 +189,9 @@ public class Bootstrap {
     }
 
 
-    public Server start() throws IOException {
-        if (address == null)
-            throw new IllegalStateException("Address is not defined");
-
-        if (requestHandler == null)
-            throw new IllegalStateException("RequestHandler is not defined");
-
-        // инстанцируем сервер
-        ServerImpl thread = new ServerImpl(this);
-
-        // и запускаем селектор в пуле
-        bossThreadPool.execute(thread);
-
-        return thread;
+    public Server create() throws IOException {
+        return new ServerImpl(this);
     }
+
 
 }

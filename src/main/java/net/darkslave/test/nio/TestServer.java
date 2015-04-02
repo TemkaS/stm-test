@@ -32,7 +32,7 @@ public class TestServer {
 
         boot.setRequestHandler(new Simple());
 
-        Server serv = boot.start();
+        Server serv = boot.create();
 
 
 
