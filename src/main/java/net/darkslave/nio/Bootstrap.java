@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import net.darkslave.nio.impl.ServerImpl;
 
 
 
@@ -31,14 +31,12 @@ public class Bootstrap {
 
 
     public Bootstrap() {
-        this.bossThreadPool  = Executors.newSingleThreadExecutor();
-        this.workThreadPool  = Executors.newWorkStealingPool();
         this.errorHandler    = DEFAULT_ERROR_HANDLER;
         this.requestAcceptor = DEFAULT_REQUEST_ACCEPTOR;
     }
 
 
-    InetSocketAddress getAddress() {
+    public InetSocketAddress getAddress() {
         return address;
     }
 
@@ -81,7 +79,7 @@ public class Bootstrap {
     }
 
 
-    ExecutorService getBossThreadPool() {
+    public ExecutorService getBossThreadPool() {
         return bossThreadPool;
     }
 
@@ -97,7 +95,7 @@ public class Bootstrap {
     }
 
 
-    ExecutorService getWorkThreadPool() {
+    public ExecutorService getWorkThreadPool() {
         return workThreadPool;
     }
 
@@ -113,7 +111,7 @@ public class Bootstrap {
     }
 
 
-    ErrorHandler getErrorHandler() {
+    public ErrorHandler getErrorHandler() {
         return errorHandler;
     }
 
@@ -129,7 +127,7 @@ public class Bootstrap {
     }
 
 
-    RequestAcceptor getRequestAcceptor() {
+    public RequestAcceptor getRequestAcceptor() {
         return requestAcceptor;
     }
 
@@ -145,7 +143,7 @@ public class Bootstrap {
     }
 
 
-    RequestHandler getRequestHandler() {
+    public RequestHandler getRequestHandler() {
         return requestHandler;
     }
 
@@ -161,7 +159,7 @@ public class Bootstrap {
     }
 
 
-    int getPendingCount() {
+    public int getPendingCount() {
         return pendingCount;
     }
 
@@ -175,7 +173,7 @@ public class Bootstrap {
     }
 
 
-    int getSelectorDelay() {
+    public int getSelectorDelay() {
         return selectorDelay;
     }
 

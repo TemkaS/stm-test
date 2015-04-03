@@ -1,4 +1,4 @@
-package net.darkslave.nio;
+package net.darkslave.nio.impl;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;

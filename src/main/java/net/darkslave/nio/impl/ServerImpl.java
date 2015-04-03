@@ -1,9 +1,10 @@
-package net.darkslave.nio;
+package net.darkslave.nio.impl;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.Channel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -11,13 +12,18 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
+import net.darkslave.nio.Bootstrap;
+import net.darkslave.nio.ErrorHandler;
+import net.darkslave.nio.RequestAcceptor;
+import net.darkslave.nio.RequestHandler;
+import net.darkslave.nio.Server;
 
 
 
 /**
  * Реализация TCP-сервера
  */
-class ServerImpl implements Runnable, Server {
+public class ServerImpl implements Runnable, Server {
     private final InetSocketAddress address;
 
     private final ExecutorService bossThreadPool;
@@ -37,6 +43,12 @@ class ServerImpl implements Runnable, Server {
     public ServerImpl(Bootstrap config) throws IOException {
         if (config.getAddress() == null)
             throw new IllegalStateException("Address is not defined");
+
+        if (config.getBossThreadPool() == null)
+            throw new IllegalStateException("BossThreadPool is not defined");
+
+        if (config.getWorkThreadPool() == null)
+            throw new IllegalStateException("WorkThreadPool is not defined");
 
         if (config.getRequestHandler() == null)
             throw new IllegalStateException("RequestHandler is not defined");
@@ -66,7 +78,7 @@ class ServerImpl implements Runnable, Server {
             channel.bind(address, pendingCount);
             channel.register(selector, SelectionKey.OP_ACCEPT);
 
-            started = true; System.out.println("== started");
+            started = true;
 
             while (started && !Thread.interrupted()) {
                 // проверяем активные ключи
@@ -83,23 +95,32 @@ class ServerImpl implements Runnable, Server {
                 Iterator<SelectionKey> it = selector.selectedKeys().iterator();
                 for ( ; it.hasNext(); it.remove()) {
                     SelectionKey key = it.next();
-                    if (!key.isValid()) {
+
+                    if (!key.isValid())
+                        continue;
+
+                    try {
+                        int option = key.readyOps();
+
+                        if ((option & SelectionKey.OP_ACCEPT) != 0) {
+                            accept(key);
+                        } else
+                        if ((option & SelectionKey.OP_READ) != 0) {
+                            signal(key, SelectionKey.OP_READ);
+                        } else
+                        if ((option & SelectionKey.OP_WRITE) != 0) {
+                            signal(key, SelectionKey.OP_WRITE);
+                        }
+
+                    } catch (CancelledKeyException e) {
                         // do nothing
-                    } else
-                    if (key.isAcceptable()) {
-                        accept(key);
-                    } else
-                    if (key.isReadable()) {
-                        signal(key, SelectionKey.OP_READ);
-                    } else
-                    if (key.isWritable()) {
-                        signal(key, SelectionKey.OP_WRITE);
                     }
+
                 }
 
             }
 
-        } catch (Exception  e) {
+        } catch (Exception e) {
             setLastError(e);
 
         } finally {
@@ -115,7 +136,7 @@ class ServerImpl implements Runnable, Server {
         SelectionKey clientKey = null;
         try {
             // принимаем соединение
-            SocketChannel channel = ((ServerSocketChannel) serverKey.channel()).accept(); System.out.println("== accept");
+            SocketChannel channel = ((ServerSocketChannel) serverKey.channel()).accept();
             channel.configureBlocking(false);
 
             // регистрируем в селекторе

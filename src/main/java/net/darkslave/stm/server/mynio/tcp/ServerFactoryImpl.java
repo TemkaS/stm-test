@@ -1,4 +1,4 @@
-package net.darkslave.stm.server.netty.udp;
+package net.darkslave.stm.server.mynio.tcp;
 
 import java.io.IOException;
 import net.darkslave.stm.core.Server;
