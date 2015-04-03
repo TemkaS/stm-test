@@ -26,7 +26,7 @@ public class Bootstrap {
     private RequestHandler    requestHandler;
     private ErrorHandler      errorHandler;
 
-    private int pendingCount  = 0;
+    private int pendingCount  = 1000;
     private int selectorDelay = 10;
 
 

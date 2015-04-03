@@ -1,8 +1,9 @@
 package net.darkslave.nio;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -13,8 +14,10 @@ import java.util.concurrent.ExecutorService;
 
 
 
-
-public class ServerImpl implements Runnable, Server {
+/**
+ * Реализация TCP-сервера
+ */
+class ServerImpl implements Runnable, Server {
     private final InetSocketAddress address;
 
     private final ExecutorService bossThreadPool;
@@ -31,7 +34,7 @@ public class ServerImpl implements Runnable, Server {
 
 
 
-    ServerImpl(Bootstrap config) throws IOException {
+    public ServerImpl(Bootstrap config) throws IOException {
         if (config.getAddress() == null)
             throw new IllegalStateException("Address is not defined");
 
@@ -61,15 +64,15 @@ public class ServerImpl implements Runnable, Server {
         ) {
             channel.configureBlocking(false);
             channel.bind(address, pendingCount);
-            channel.register(selector, channel.validOps());
+            channel.register(selector, SelectionKey.OP_ACCEPT);
 
-            started = true;
+            started = true; System.out.println("== started");
 
             while (started && !Thread.interrupted()) {
                 // проверяем активные ключи
                 int selected = selector.selectNow();
 
-                // еслиключей нет, ждем немного
+                // если нет ключей, подождем немного
                 if (selected == 0) {
                     if (selectorDelay > 0)
                         Thread.sleep(selectorDelay);
@@ -86,14 +89,11 @@ public class ServerImpl implements Runnable, Server {
                     if (key.isAcceptable()) {
                         accept(key);
                     } else
-                    if (key.isConnectable()) {
-                        connect(key);
-                    } else
                     if (key.isReadable()) {
-                        read(key);
+                        signal(key, SelectionKey.OP_READ);
                     } else
                     if (key.isWritable()) {
-                        write(key);
+                        signal(key, SelectionKey.OP_WRITE);
                     }
                 }
 
@@ -112,37 +112,17 @@ public class ServerImpl implements Runnable, Server {
      * Создание нового соединения
      */
     private void accept(SelectionKey serverKey) {
-        SocketChannel chan = null;
+        SelectionKey clientKey = null;
         try {
             // принимаем соединение
-            chan = ((ServerSocketChannel) serverKey.channel()).accept();
-            chan.configureBlocking(false);
+            SocketChannel channel = ((ServerSocketChannel) serverKey.channel()).accept(); System.out.println("== accept");
+            channel.configureBlocking(false);
 
             // регистрируем в селекторе
-            chan.register(serverKey.selector(), SelectionKey.OP_READ);
-
-        } catch (Exception e) {
-            if (chan != null) {
-                closeChannel(e, chan);
-            } else {
-                setLastError(e);
-            }
-        }
-    }
-
-
-    /**
-     * Завершение подключения к клиенту
-     */
-    private void connect(SelectionKey clientKey) {
-        try {
-            SocketChannel chan = (SocketChannel) clientKey.channel();
-
-            // завершаем соединение
-            chan.finishConnect();
+            clientKey = channel.register(serverKey.selector(), 0);
 
             // проверяем адрес клиента
-            InetSocketAddress address = (InetSocketAddress) chan.getRemoteAddress();
+            InetSocketAddress address = (InetSocketAddress) channel.getRemoteAddress();
 
             if (!requestAcceptor.accept(address)) {
                 cancelKey(null, clientKey);
@@ -150,48 +130,48 @@ public class ServerImpl implements Runnable, Server {
             }
 
             // создаем новую коннекцию запроса
-            Connection conn = new Connection(clientKey);
-            clientKey.attach(conn);
+            ChannelAction action = new ChannelAction(clientKey);
+            clientKey.attach(action);
 
             // запускаем в отдельном потоке обработку запроса
-            workThreadPool.execute(() -> {
-                Exception error = null;
-                try {
-                    requestHandler.handle(conn.getInputStream(), conn.getOutputStream());
-                } catch (Exception e) {
-                    error = e;
-                } finally {
-                    cancelKey(error, clientKey);
-                }
-            });
+            handle(clientKey, action);
 
         } catch (Exception e) {
-            cancelKey(e, clientKey);
+            if (clientKey != null) {
+                cancelKey(e, clientKey);
+            } else {
+                setLastError(e);
+            }
         }
     }
 
 
-    private void read(SelectionKey clientKey) {
-        try {
-            SocketChannel chan = (SocketChannel) clientKey.channel();
+    private void handle(SelectionKey clientKey, ChannelAction action) {
+        InputStream  input  = new ChannelInputStream (action);
+        OutputStream output = new ChannelOutputStream(action);
 
-            Connection conn = (Connection) clientKey.attachment();
-            chan.read((ByteBuffer) null);
+        workThreadPool.execute(() -> {
+            Exception error = null;
+            try {
+                requestHandler.handle(input, output);
+            } catch (Exception e) {
+                error = e;
+            } finally {
+                cancelKey(error, clientKey);
+            }
+        });
 
-        } catch (Exception e) {
-            cancelKey(e, clientKey);
-        }
     }
 
 
-    private void write(SelectionKey clientKey) {
+    /**
+     * Сигнал о чтении / записи в канал
+     */
+    private void signal(SelectionKey clientKey, int option) {
         try {
-            SocketChannel chan = (SocketChannel) clientKey.channel();
-
-            Connection conn = (Connection) clientKey.attachment();
-            chan.write((ByteBuffer) null);
-
-        } catch (Exception e) {
+            ChannelAction action = (ChannelAction) clientKey.attachment();
+            action.signal(option);
+        } catch (IOException e) {
             cancelKey(e, clientKey);
         }
     }
@@ -202,6 +182,7 @@ public class ServerImpl implements Runnable, Server {
      */
     private void cancelKey(Exception result, SelectionKey clientKey) {
         clientKey.cancel();
+        clientKey.attach(null);
         closeChannel(result, clientKey.channel());
     }
 
@@ -261,8 +242,5 @@ public class ServerImpl implements Runnable, Server {
     public void stop() {
         started = false;
     }
-
-
-
 
 }

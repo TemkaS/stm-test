@@ -8,18 +8,18 @@ import java.io.OutputStream;
 
 
 
-public class ConnectionOutputStream extends OutputStream {
-    private final Connection connection;
+public class ChannelOutputStream extends OutputStream {
+    private final ChannelAction delegate;
 
 
-    ConnectionOutputStream(Connection connection) {
-        this.connection = connection;
+    ChannelOutputStream(ChannelAction connection) {
+        this.delegate = connection;
     }
 
 
     @Override
     public void write(byte[] source, int offset, int length) throws IOException {
-        connection.write(source, offset, length);
+        delegate.write(source, offset, length);
     }
 
 

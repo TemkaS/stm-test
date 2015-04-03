@@ -8,19 +8,19 @@ import java.io.InputStream;
 
 
 
-public class ConnectionInputStream extends InputStream {
+public class ChannelInputStream extends InputStream {
     private static final int SKIP_BUFFER_SIZE = 4096;
-    private final Connection connection;
+    private final ChannelAction delegate;
 
 
-    ConnectionInputStream(Connection connection) {
-        this.connection = connection;
+    ChannelInputStream(ChannelAction connection) {
+        this.delegate = connection;
     }
 
 
     @Override
     public int read(byte[] target, int offset, int length) throws IOException {
-        return connection.read(target, offset, length);
+        return delegate.read(target, offset, length);
     }
 
 
