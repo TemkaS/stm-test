@@ -27,6 +27,8 @@ public class ClientImpl implements Client {
     @Override
     public void send(Message messg) throws IOException {
         try (Socket socket = new Socket(config.getTargetHost(), config.getTargetPort().get())) {
+            socket.setTcpNoDelay(true);
+
             byte[] buffer = Message.encode(messg);
             socket.getOutputStream().write(buffer);
         }

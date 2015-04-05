@@ -39,7 +39,7 @@ public class ServerImpl implements net.darkslave.stm.core.Server {
     public void start() throws IOException {
         Bootstrap boot = new Bootstrap();
         boot.setBossThreadPool(Executors.newCachedThreadPool());
-        boot.setWorkThreadPool(Executors.newWorkStealingPool());
+        boot.setWorkThreadPool(Executors.newFixedThreadPool(32));
 
         Worker worker = new Worker(handler);
         boot.setRequestHandler(worker);

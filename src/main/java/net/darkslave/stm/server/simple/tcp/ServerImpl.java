@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.LinkedList;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
@@ -74,10 +75,14 @@ public class ServerImpl implements Server {
 
         @Override
         public void run() {
-            try (ServerSocket socket = new ServerSocket(port)) {
+            try (ServerSocket server = new ServerSocket(port)) {
 
                 while (!Thread.interrupted() && active) {
-                    try (InputStream stream = socket.accept().getInputStream()) {
+                    try (
+                        Socket socket = server.accept();
+                        InputStream stream = socket.getInputStream();
+                    ) {
+                        socket.setTcpNoDelay(true);
                         byte[] recv = new byte[4096];
                         int read = stream.read(recv);
 

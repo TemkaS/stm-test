@@ -7,6 +7,8 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.concurrent.Executors;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import net.darkslave.nio.Bootstrap;
 import net.darkslave.nio.RequestAcceptor;
 import net.darkslave.nio.RequestHandler;
@@ -17,6 +19,8 @@ import net.darkslave.nio.RequestHandler;
 
 
 public class TestServer {
+    private static final Logger logger = LogManager.getLogger(TestServer.class);
+
 
     private static class Simple implements RequestHandler, RequestAcceptor {
         private static final byte[] HEADERS_ENDS = "\r\n\r\n".getBytes();
@@ -25,7 +29,7 @@ public class TestServer {
         @Override
         public void handle(InputStream inp, OutputStream out) throws IOException {
             String reqt = readTill(inp, HEADERS_ENDS);
-            System.out.println("request " + reqt);
+            logger.debug("request " + reqt);
 
             out.write(("Hello world " + new Date()).getBytes());
         }
@@ -79,7 +83,7 @@ public class TestServer {
 
         @Override
         public boolean accept(InetSocketAddress address) {
-            System.out.println("connect " + address);
+           logger.debug("connect " + address);
             return true;
         }
 
@@ -99,7 +103,7 @@ public class TestServer {
 
         boot.create().start();
 
-        System.out.println("server started");
+        logger.debug("server started");
     }
 
 }

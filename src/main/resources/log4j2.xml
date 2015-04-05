@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <Configuration>
     <Appenders>
-        <File name="main" fileName="logs/main.log" append="false">
+        <File name="main" fileName="logs/main.log" append="true">
             <PatternLayout pattern="%d %-5p [%t] %C{2} %m%n" />
         </File>
         <Console name="STDOUT" target="SYSTEM_OUT">
@@ -9,11 +9,9 @@
         </Console>
     </Appenders>
     <Loggers>
-        <Logger name="org.apache.log4j.xml" level="info">
-            <AppenderRef ref="main" />
-        </Logger>
         <Root level="debug">
             <AppenderRef ref="STDOUT" />
+            <AppenderRef ref="main" />
         </Root>
     </Loggers>
 </Configuration>
