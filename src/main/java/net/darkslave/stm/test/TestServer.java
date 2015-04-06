@@ -32,7 +32,10 @@ public class TestServer {
         try (Server server = config.getServerFactory().create(config)) {
             AtomicLong count = new AtomicLong(0);
 
-            server.setHandler((Message messg) -> count.incrementAndGet());
+            server.setHandler((Message messg) -> {
+                count.incrementAndGet();
+            });
+
             server.start();
 
 

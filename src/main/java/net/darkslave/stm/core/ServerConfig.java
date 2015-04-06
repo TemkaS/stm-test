@@ -3,7 +3,6 @@ package net.darkslave.stm.core;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import net.darkslave.prop.PropertyFilePresenter;
@@ -14,21 +13,16 @@ import net.darkslave.prop.PropertyPresenter;
 
 
 public class ServerConfig {
-    private InetAddress targetHost;
-    private Port targetPort;
+    private Port serverPort;
 
     private ServerFactory serverFactory;
 
     private long workingTime;
 
 
-    public InetAddress getTargetHost() {
-        return targetHost;
-    }
 
-
-    public Port getTargetPort() {
-        return targetPort;
+    public Port getServerPort() {
+        return serverPort;
     }
 
 
@@ -47,11 +41,10 @@ public class ServerConfig {
             PropertyPresenter prop = new PropertyFilePresenter(Paths.get(filename), StandardCharsets.UTF_8);
             ServerConfig result = new ServerConfig();
 
-            result.targetHost = InetAddress.getByName(prop.getString("target.host"));
-            result.targetPort = Port.parse(prop.getString("target.port"));
+            result.serverPort = Port.parse(prop.getString("server.port"));
             result.workingTime = prop.getLong("working.time", -1L);
 
-            Class<?> serverClass = Class.forName(prop.getString("server.impl"));
+            Class<?> serverClass = Class.forName("net.darkslave.stm." + prop.getString("server.impl") + ".server.ServerImpl");
             Constructor<?> serverConst = serverClass.getConstructor(ServerConfig.class);
 
             result.serverFactory = (ServerFactory) Proxy.newProxyInstance(

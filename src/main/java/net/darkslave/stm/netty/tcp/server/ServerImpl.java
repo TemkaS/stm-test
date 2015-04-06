@@ -11,7 +11,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
-import net.darkslave.stm.core.MessageHandler;
+import net.darkslave.stm.core.MessageAcceptor;
 import net.darkslave.stm.core.Server;
 import net.darkslave.stm.core.ServerConfig;
 
@@ -21,7 +21,7 @@ import net.darkslave.stm.core.ServerConfig;
 
 public class ServerImpl implements Server {
     private final ServerConfig config;
-    private MessageHandler handler;
+    private MessageAcceptor handler;
     private final EventLoopGroup groupBoss;
     private final EventLoopGroup groupWork;
     private final List<Channel> workers;
@@ -36,7 +36,7 @@ public class ServerImpl implements Server {
 
 
     @Override
-    public void setHandler(MessageHandler handler) {
+    public void setHandler(MessageAcceptor handler) {
         this.handler = handler;
     }
 
@@ -57,7 +57,7 @@ public class ServerImpl implements Server {
             }
         });
 
-        for (Integer port : config.getTargetPort()) {
+        for (Integer port : config.getServerPort()) {
             workers.add(boot.bind(port).channel());
         }
 

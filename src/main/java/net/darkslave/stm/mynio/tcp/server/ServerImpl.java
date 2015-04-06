@@ -14,7 +14,7 @@ import net.darkslave.nio.ErrorHandler;
 import net.darkslave.nio.RequestHandler;
 import net.darkslave.nio.Server;
 import net.darkslave.stm.core.Message;
-import net.darkslave.stm.core.MessageHandler;
+import net.darkslave.stm.core.MessageAcceptor;
 import net.darkslave.stm.core.ServerConfig;
 
 
@@ -25,17 +25,20 @@ public class ServerImpl implements net.darkslave.stm.core.Server {
     private static final Logger logger = LogManager.getLogger(ServerImpl.class);
 
     private final ServerConfig config;
-    private MessageHandler handler;
-    private final ExecutorService bossThreadPool;
-    private final ExecutorService workThreadPool;
-    private final List<Server> active;
+    private final ExecutorService bossThreadPool = Executors.newCachedThreadPool();
+    private final ExecutorService workThreadPool = Executors.newCachedThreadPool();
+    private final List<Server> active = new LinkedList<>();
+    private MessageAcceptor handler;
 
 
     public ServerImpl(ServerConfig config) throws IOException {
         this.config = config;
-        this.active = new LinkedList<>();
-        this.bossThreadPool = Executors.newCachedThreadPool();
-        this.workThreadPool = Executors.newCachedThreadPool();
+    }
+
+
+    @Override
+    public void setHandler(MessageAcceptor handler) {
+        this.handler = handler;
     }
 
 
@@ -51,7 +54,7 @@ public class ServerImpl implements net.darkslave.stm.core.Server {
         boot.setRequestHandler(worker);
         boot.setErrorHandler(worker);
 
-        for (Integer port : config.getTargetPort()) {
+        for (Integer port : config.getServerPort()) {
             Server server = new net.darkslave.nio.impl.ServerImpl(boot.setAddress(port));
             server.start();
             active.add(server);
@@ -62,24 +65,21 @@ public class ServerImpl implements net.darkslave.stm.core.Server {
 
     @Override
     public void close() throws IOException {
-        for (Server server : active)
-            server.stop();
+        try {
+            for (Server server : active)
+                server.stop();
 
-        bossThreadPool.shutdownNow();
-        workThreadPool.shutdownNow();
-    }
-
-
-    @Override
-    public void setHandler(MessageHandler handler) {
-        this.handler = handler;
+        } finally {
+            bossThreadPool.shutdownNow();
+            workThreadPool.shutdownNow();
+        }
     }
 
 
     private static class Worker implements RequestHandler, ErrorHandler {
-        private final MessageHandler handler;
+        private final MessageAcceptor handler;
 
-        public Worker(MessageHandler handler) throws IOException {
+        public Worker(MessageAcceptor handler) throws IOException {
             this.handler = handler;
         }
 
@@ -101,5 +101,6 @@ public class ServerImpl implements net.darkslave.stm.core.Server {
         }
 
     }
+
 
 }

@@ -11,7 +11,7 @@ import java.util.concurrent.Executors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import net.darkslave.stm.core.Message;
-import net.darkslave.stm.core.MessageHandler;
+import net.darkslave.stm.core.MessageAcceptor;
 import net.darkslave.stm.core.Server;
 import net.darkslave.stm.core.ServerConfig;
 
@@ -23,28 +23,27 @@ public class ServerImpl implements Server {
     private static final Logger logger = LogManager.getLogger(ServerImpl.class);
 
     private final ServerConfig config;
-    private final ExecutorService bossThreadPool;
-    private final List<Worker> workers;
-    private MessageHandler handler;
+    private MessageAcceptor handler;
+
+    private final ExecutorService bossThreadPool = Executors.newCachedThreadPool();
+    private final List<Closeable> workers = new LinkedList<>();
 
 
     public ServerImpl(ServerConfig config) throws IOException {
         this.config = config;
-        this.workers = new LinkedList<>();
-        this.bossThreadPool = Executors.newCachedThreadPool();
     }
 
 
     @Override
-    public void setHandler(MessageHandler handler) {
+    public void setHandler(MessageAcceptor handler) {
         this.handler = handler;
     }
 
 
     @Override
     public void start() throws IOException {
-        for (Integer port : config.getTargetPort()) {
-            Worker worker = new Worker(port, handler);
+        for (Integer port : config.getServerPort()) {
+            Worker worker = new Worker(port);
             bossThreadPool.execute(worker);
             workers.add(worker);
         }
@@ -53,22 +52,23 @@ public class ServerImpl implements Server {
 
     @Override
     public void close() throws IOException {
-        for (Worker worker : workers)
-            worker.close();
+        try {
+            for (Closeable worker : workers)
+                worker.close();
 
-        bossThreadPool.shutdownNow();
+        } finally {
+            bossThreadPool.shutdownNow();
+        }
     }
 
 
-    private static class Worker implements Runnable, Closeable {
+    private class Worker implements Runnable, Closeable {
         private final int port;
-        private final MessageHandler handler;
         private volatile boolean active = true;
 
 
-        public Worker(int port, MessageHandler handler) throws IOException {
-            this.port    = port;
-            this.handler = handler;
+        public Worker(int port) throws IOException {
+            this.port = port;
         }
 
 

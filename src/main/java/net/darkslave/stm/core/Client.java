@@ -9,10 +9,12 @@ import java.io.IOException;
 public interface Client extends Closeable {
 
 
-    void init() throws IOException;
+    void start() throws IOException;
 
 
-    void send(Message messg) throws IOException;
+    void setHandler(MessageProducer handler);
 
+
+    boolean started();
 
 }

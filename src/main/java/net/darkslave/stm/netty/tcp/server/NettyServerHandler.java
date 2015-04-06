@@ -3,7 +3,7 @@ package net.darkslave.stm.netty.tcp.server;
 
 
 import net.darkslave.stm.core.Message;
-import net.darkslave.stm.core.MessageHandler;
+import net.darkslave.stm.core.MessageAcceptor;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -13,10 +13,10 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 
 
 public class NettyServerHandler extends ChannelInboundHandlerAdapter {
-    private final MessageHandler handler;
+    private final MessageAcceptor handler;
 
 
-    public NettyServerHandler(MessageHandler handler) {
+    public NettyServerHandler(MessageAcceptor handler) {
         this.handler = handler;
     }
 

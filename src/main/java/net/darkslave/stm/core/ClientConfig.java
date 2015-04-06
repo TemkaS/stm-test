@@ -14,22 +14,21 @@ import net.darkslave.prop.PropertyPresenter;
 
 
 public class ClientConfig {
-    private InetAddress targetHost;
-    private Port targetPort;
+    private InetAddress serverHost;
+    private Port serverPort;
+    private Port clientPort;
 
     private ClientFactory clientFactory;
-
-    private int threadCount;
-    private int messages;
+    private int messgCount;
 
 
-    public InetAddress getTargetHost() {
-        return targetHost;
+    public InetAddress getServerHost() {
+        return serverHost;
     }
 
 
-    public Port getTargetPort() {
-        return targetPort;
+    public Port getServerPort() {
+        return serverPort;
     }
 
 
@@ -38,13 +37,13 @@ public class ClientConfig {
     }
 
 
-    public int getThreadCount() {
-        return threadCount;
+    public int getMessgCount() {
+        return messgCount;
     }
 
 
-    public int getMessages() {
-        return messages;
+    public Port getClientPort() {
+        return clientPort;
     }
 
 
@@ -53,12 +52,13 @@ public class ClientConfig {
             PropertyPresenter prop = new PropertyFilePresenter(Paths.get(filename), StandardCharsets.UTF_8);
             ClientConfig result = new ClientConfig();
 
-            result.targetHost = InetAddress.getByName(prop.getString("target.host"));
-            result.targetPort = Port.parse(prop.getString("target.port"));
-            result.threadCount = prop.getInteger("thread.count", 1);
-            result.messages = prop.getInteger("messages", 1);
+            result.serverHost = InetAddress.getByName(prop.getString("server.host"));
+            result.serverPort = Port.parse(prop.getString("server.port"));
+            result.clientPort = Port.parse(prop.getString("client.port"));
 
-            Class<?> clientClass = Class.forName(prop.getString("client.impl"));
+            result.messgCount = prop.getInteger("messg.count", 1);
+
+            Class<?> clientClass = Class.forName("net.darkslave.stm." + prop.getString("client.impl") + ".client.ClientImpl");
             Constructor<?> clientConst = clientClass.getConstructor(ClientConfig.class);
 
             result.clientFactory = (ClientFactory) Proxy.newProxyInstance(

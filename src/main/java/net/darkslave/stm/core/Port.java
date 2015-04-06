@@ -13,6 +13,8 @@ public abstract class Port implements Iterable<Integer> {
 
     public abstract int get();
 
+    public abstract int size();
+
 
     public static Port parse(String source) {
         if (!source.contains("..")) {
@@ -61,6 +63,11 @@ public abstract class Port implements Iterable<Integer> {
             return new RangedIntIterator(lower, lower + delta);
         }
 
+        @Override
+        public int size() {
+            return delta;
+        }
+
     }
 
 
@@ -80,6 +87,11 @@ public abstract class Port implements Iterable<Integer> {
         @Override
         public Iterator<Integer> iterator() {
             return new SingleIntIterator(port);
+        }
+
+        @Override
+        public int size() {
+            return 1;
         }
 
     }

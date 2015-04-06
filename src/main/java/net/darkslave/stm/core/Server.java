@@ -12,7 +12,7 @@ public interface Server extends Closeable {
     void start() throws IOException;
 
 
-    void setHandler(MessageHandler handler);
+    void setHandler(MessageAcceptor handler);
 
 
 }

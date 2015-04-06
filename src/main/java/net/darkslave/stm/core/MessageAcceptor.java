@@ -5,7 +5,7 @@ package net.darkslave.stm.core;
 
 
 
-public interface MessageHandler {
+public interface MessageAcceptor {
 
 
     void accept(Message messg);
