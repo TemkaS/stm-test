@@ -16,10 +16,14 @@ import net.darkslave.prop.PropertyPresenter;
 public class ClientConfig {
     private InetAddress serverHost;
     private Port serverPort;
-    private Port clientPort;
+
 
     private ClientFactory clientFactory;
-    private int messgCount;
+
+    private int threadsCount;
+    private int messageCount;
+    private int packetsMin;
+    private int packetsMax;
 
 
     public InetAddress getServerHost() {
@@ -37,13 +41,23 @@ public class ClientConfig {
     }
 
 
-    public int getMessgCount() {
-        return messgCount;
+    public int getThreadsCount() {
+        return threadsCount;
     }
 
 
-    public Port getClientPort() {
-        return clientPort;
+    public int getMessageCount() {
+        return messageCount;
+    }
+
+
+    public int getPacketsMin() {
+        return packetsMin;
+    }
+
+
+    public int getPacketsMax() {
+        return packetsMax;
     }
 
 
@@ -54,9 +68,15 @@ public class ClientConfig {
 
             result.serverHost = InetAddress.getByName(prop.getString("server.host"));
             result.serverPort = Port.parse(prop.getString("server.port"));
-            result.clientPort = Port.parse(prop.getString("client.port"));
 
-            result.messgCount = prop.getInteger("messg.count", 1);
+            result.threadsCount = prop.getInteger("threads.count", 1);
+            result.messageCount = prop.getInteger("message.count", 1);
+
+            result.packetsMin = prop.getInteger("packets.min", 100);
+            result.packetsMax = prop.getInteger("packets.max", 100);
+
+            if (result.packetsMax < result.packetsMin)
+                throw new ConfigException("Illegal packet.size");
 
             Class<?> clientClass = Class.forName("net.darkslave.stm." + prop.getString("client.impl") + ".client.ClientImpl");
             Constructor<?> clientConst = clientClass.getConstructor(ClientConfig.class);

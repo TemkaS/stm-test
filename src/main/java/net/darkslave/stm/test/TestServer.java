@@ -31,15 +31,18 @@ public class TestServer {
 
         try (Server server = config.getServerFactory().create(config)) {
             AtomicLong count = new AtomicLong(0);
+            AtomicLong total = new AtomicLong(0);
 
             server.setHandler((Message messg) -> {
                 count.incrementAndGet();
+                total.addAndGet(messg.getSize());
             });
 
             server.start();
 
 
             long countPrev = 0;
+            long totalPrev = 0;
             long checkPrev = System.currentTimeMillis();
             long expires;
 
@@ -53,16 +56,21 @@ public class TestServer {
                 long countNow   = count.get();
                 long countDelta = countNow - countPrev;
 
+                long totalNow   = total.get();
+                long totalDelta = totalNow - totalPrev;
+
                 long checkNow   = System.currentTimeMillis();
                 long checkDelta = checkNow - checkPrev;
 
                 logger.info(String.format(
-                        "total: %d msg, thrwpt: %.2f msg/sec",
+                        "total: %d msg, thrwpt: %.2f msg/sec  %.2f kb/sec",
                         countNow,
-                        checkDelta > 0 ? 1000.0 * countDelta / checkDelta : 0
+                        checkDelta > 0 ? 1000.0 * countDelta / checkDelta : 0,
+                        checkDelta > 0 ? 1000.0 * totalDelta / checkDelta / 1024.0 : 0
                     ));
 
                 countPrev = countNow;
+                totalPrev = totalNow;
                 checkPrev = checkNow;
 
                 if (System.currentTimeMillis() >= expires)

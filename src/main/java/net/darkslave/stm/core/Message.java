@@ -16,28 +16,27 @@ import java.io.OutputStream;
 
 
 public class Message {
-    private final String param;
-    private final double value;
+    private final byte[] data;
+    private final int size;
 
 
-    public Message(String param, double value) {
-        this.param = param;
-        this.value = value;
+    public Message(byte[] data, int size) {
+        this.data = data;
+        this.size = size;
     }
 
 
-    public String getParam() {
-        return param;
+    public byte[] getData() {
+        return data;
     }
 
 
-    public double getValue() {
-        return value;
+    public int getSize() {
+        return size;
     }
 
 
     private static short MARKER = 0x7733;
-
 
 
     public static Message readFrom(InputStream stream) throws IOException {
@@ -48,10 +47,12 @@ public class Message {
             if (marker != MARKER)
                 throw new IOException("Invalid Message packet");
 
-            String param = dis.readUTF();
-            double value = dis.readDouble();
+            int size = dis.readInt();
 
-            return new Message(param, value);
+            byte[] data = new byte[size];
+            dis.readFully(data);
+
+            return new Message(data, size);
 
         } catch (EOFException e) {
             return null;
@@ -64,8 +65,8 @@ public class Message {
 
         dos.writeShort(MARKER);
 
-        dos.writeUTF(source.getParam());
-        dos.writeDouble(source.getValue());
+        dos.writeInt(source.data.length);
+        dos.write(source.data);
     }
 
 

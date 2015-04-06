@@ -1,11 +1,8 @@
 package net.darkslave.stm.simple.tcp.client;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,12 +25,11 @@ public class ClientImpl implements Client {
     private MessageProducer handler;
 
     private final ExecutorService bossThreadPool = Executors.newCachedThreadPool();
-    private final List<Closeable> workers = new LinkedList<>();
 
 
     public ClientImpl(ClientConfig config) {
         this.config = config;
-        this.latch  = new AtomicInteger(config.getClientPort().size());
+        this.latch  = new AtomicInteger(config.getThreadsCount());
     }
 
 
@@ -45,23 +41,16 @@ public class ClientImpl implements Client {
 
     @Override
     public void start() throws IOException {
-        for (int port : config.getClientPort()) {
-            Worker worker = new Worker(port);
+        for (int i = 0; i < config.getThreadsCount(); i++) {
+            Worker worker = new Worker();
             bossThreadPool.execute(worker);
-            workers.add(worker);
         }
     }
 
 
     @Override
     public void close() throws IOException {
-        try {
-            for (Closeable worker : workers)
-                worker.close();
-
-        } finally {
-            bossThreadPool.shutdownNow();
-        }
+        bossThreadPool.shutdownNow();
     }
 
 
@@ -71,22 +60,14 @@ public class ClientImpl implements Client {
     }
 
 
-    public class Worker implements Runnable, Closeable {
-        private final int port;
-
-
-        public Worker(int port) {
-            this.port = port;
-        }
-
+    public class Worker implements Runnable {
 
         @Override
         public void run() {
             try (Socket socket = new Socket()) {
-                socket.bind(new InetSocketAddress(port));
                 socket.connect(new InetSocketAddress(config.getServerHost(), config.getServerPort().get()));
 
-                int count = config.getMessgCount();
+                int count = config.getMessageCount();
 
                 while (--count >= 0 && !Thread.interrupted()) {
                     Message messg = handler.produce();
@@ -99,11 +80,6 @@ public class ClientImpl implements Client {
             } finally {
                 latch.decrementAndGet();
             }
-        }
-
-
-        @Override
-        public void close() throws IOException {
         }
 
     }

@@ -1,8 +1,8 @@
-package net.darkslave.stm.simple.udp.client;
+package net.darkslave.stm.simple.tcp2.client;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -64,22 +64,16 @@ public class ClientImpl implements Client {
 
         @Override
         public void run() {
-            try (DatagramSocket socket = new DatagramSocket()) {
+            try {
                 int count = config.getMessageCount();
 
                 while (--count >= 0 && !Thread.interrupted()) {
-                    Message messg = handler.produce();
+                    try (Socket socket = new Socket()) {
+                        socket.connect(new InetSocketAddress(config.getServerHost(), config.getServerPort().get()));
 
-                    byte[] buffer = Message.write(messg);
-
-                    DatagramPacket packet = new DatagramPacket(
-                            buffer,
-                            buffer.length,
-                            config.getServerHost(),
-                            config.getServerPort().get()
-                            );
-
-                    socket.send(packet);
+                        Message messg = handler.produce();
+                        Message.writeTo(messg, socket.getOutputStream());
+                    }
                 }
 
             } catch (Exception e) {
