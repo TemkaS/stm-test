@@ -2,7 +2,6 @@ package net.darkslave.stm.core;
 
 import java.io.Closeable;
 import java.io.IOException;
-import net.darkslave.stm.proto.MessageHandler;
 
 
 
