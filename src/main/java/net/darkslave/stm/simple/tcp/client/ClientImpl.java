@@ -1,7 +1,6 @@
 package net.darkslave.stm.simple.tcp.client;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -64,14 +63,11 @@ public class ClientImpl implements Client {
 
         @Override
         public void run() {
-            try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress(config.getServerHost(), config.getServerPort().get()));
-
+            try (Socket socket = new Socket(config.getServerHost(), config.getServerPort().get())) {
                 int count = config.getMessageCount();
 
                 while (--count >= 0 && !Thread.interrupted()) {
-                    Message messg = handler.produce();
-                    Message.writeTo(messg, socket.getOutputStream());
+                    Message.writeTo(handler.produce(), socket.getOutputStream());
                 }
 
             } catch (Exception e) {
