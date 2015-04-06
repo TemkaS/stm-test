@@ -12,6 +12,8 @@ import org.apache.logging.log4j.Logger;
 import net.darkslave.nio.Bootstrap;
 import net.darkslave.nio.RequestAcceptor;
 import net.darkslave.nio.RequestHandler;
+import net.darkslave.nio.Server;
+import net.darkslave.nio.impl.ServerImpl;
 
 
 
@@ -101,7 +103,8 @@ public class TestHttpServer {
         boot.setRequestAcceptor(handler);
         boot.setRequestHandler(handler);
 
-        boot.create().start();
+        Server server = new ServerImpl(boot);
+        server.start();
 
         logger.debug("server started");
     }

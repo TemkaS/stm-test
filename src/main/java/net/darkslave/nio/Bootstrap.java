@@ -1,11 +1,9 @@
 package net.darkslave.nio;
 
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
-import net.darkslave.nio.impl.ServerImpl;
 
 
 
@@ -184,11 +182,6 @@ public class Bootstrap {
     public Bootstrap setSelectorDelay(int value) {
         this.selectorDelay = value;
         return this;
-    }
-
-
-    public Server create() throws IOException {
-        return new ServerImpl(this);
     }
 
 

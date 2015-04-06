@@ -52,7 +52,7 @@ public class ServerImpl implements net.darkslave.stm.core.Server {
         boot.setErrorHandler(worker);
 
         for (Integer port : config.getTargetPort()) {
-            Server server = boot.setAddress(port).create();
+            Server server = new net.darkslave.nio.impl.ServerImpl(boot.setAddress(port));
             server.start();
             active.add(server);
         }
