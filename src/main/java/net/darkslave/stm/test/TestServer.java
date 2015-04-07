@@ -16,7 +16,11 @@ public class TestServer {
 
     public static void main(String[] args) {
         try {
+            if (args.length == 0)
+                args = new String[] { "server.cfg" };
+
             __main(args);
+
         } catch (Exception e) {
             logger.catching(e);
         }
@@ -24,9 +28,6 @@ public class TestServer {
 
 
     private static void __main(String[] args) throws Exception {
-        if (args.length == 0)
-            throw new IllegalArgumentException("Config file is not defined");
-
         ServerConfig config = ServerConfig.create(args[0]);
 
         try (Server server = config.getServerFactory().create(config)) {

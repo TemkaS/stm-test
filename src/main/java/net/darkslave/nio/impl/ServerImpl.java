@@ -191,7 +191,8 @@ public class ServerImpl implements Runnable, Server {
     private void signal(SelectionKey clientKey, int option) {
         try {
             ChannelAction action = (ChannelAction) clientKey.attachment();
-            action.signal(option);
+            if (action != null)
+                action.signal(option);
         } catch (IOException e) {
             cancelKey(e, clientKey);
         }

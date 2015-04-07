@@ -36,6 +36,7 @@ class ChannelAction {
 
         await(SelectionKey.OP_READ);
 
+        // читаем из канала только доступные данные
         return channel.read(buffer);
     }
 
@@ -43,18 +44,25 @@ class ChannelAction {
     public void write(byte[] source, int offset, int length) throws IOException {
         ByteBuffer buffer = ByteBuffer.wrap(source, offset, length);
 
-        await(SelectionKey.OP_WRITE);
+        while (buffer.remaining() > 0) {
+            // записываем в канал все данные
+            await(SelectionKey.OP_WRITE);
 
-        channel.write(buffer);
+            channel.write(buffer);
+        }
+
     }
 
 
     public void signal(int option) throws IOException {
         lock();
         try {
+            // проверяем флаг интереса
             if (interest == option) {
+                // уведомляем ожидающий поток
                 done.signalAll();
             } else {
+                // сбрасываем флаг
                 channelKey.interestOps(interest);
             }
         } finally {
@@ -76,9 +84,14 @@ class ChannelAction {
     private void await(int option) throws IOException {
         lock();
         try {
-
+            // выставляем флаг интереса
             channelKey.interestOps(interest = option);
+
+            // ожидаем уведомления
             done.await();
+
+            // сбрасываем флаг интереса
+            channelKey.interestOps(interest = 0);
 
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();

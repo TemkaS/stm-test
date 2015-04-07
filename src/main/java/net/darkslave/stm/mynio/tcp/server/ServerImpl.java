@@ -47,8 +47,8 @@ public class ServerImpl implements net.darkslave.stm.core.Server {
         Bootstrap boot = new Bootstrap();
         boot.setBossThreadPool(bossThreadPool);
         boot.setWorkThreadPool(workThreadPool);
-        boot.setPendingCount(16536);
-        boot.setSelectorDelay(5);
+        boot.setPendingCount(1024);
+        boot.setSelectorDelay(10);
 
         Worker worker = new Worker(handler);
         boot.setRequestHandler(worker);

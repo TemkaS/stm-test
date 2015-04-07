@@ -30,14 +30,19 @@ public class ChannelInputStream extends InputStream {
     }
 
 
-    private final byte[] buffer1 = new byte[1];
-
     @Override
     public int read() throws IOException {
-        int read = read(buffer1, 0, 1);
-        if (read == 1)
-            return buffer1[0];
-        return -1;
+        byte[] temp = new byte[1];
+
+        while (true) {
+            int read = read(temp, 0, 1);
+
+            if (read == 1)
+                return temp[0] & 255;
+
+            if (read < 0)
+                return read;
+        }
     }
 
 
@@ -85,13 +90,13 @@ public class ChannelInputStream extends InputStream {
 
 
     @Override
-    public void mark(int readlimit) {
+    public synchronized void mark(int readlimit) {
         throw new UnsupportedOperationException();
     }
 
 
     @Override
-    public void reset() throws IOException {
+    public synchronized void reset() throws IOException {
         throw new UnsupportedOperationException();
     }
 

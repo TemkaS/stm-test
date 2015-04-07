@@ -17,7 +17,11 @@ public class TestClient {
 
     public static void main(String[] args) {
         try {
+            if (args.length == 0)
+                args = new String[] { "config.cfg" };
+
             __main(args);
+
         } catch (Exception e) {
             logger.catching(e);
         }
@@ -25,9 +29,6 @@ public class TestClient {
 
 
     private static void __main(String[] args) throws Exception {
-        if (args.length == 0)
-            throw new IllegalArgumentException("Config file is not defined");
-
         ClientConfig config = ClientConfig.create(args[0]);
 
         try (Client client = config.getClientFactory().create(config)) {
@@ -37,7 +38,7 @@ public class TestClient {
             AtomicLong total = new AtomicLong(0);
 
             client.setHandler(() -> {
-                int size = ThreadLocalRandom.current().nextInt(config.getPacketsMin(), config.getPacketsMax());
+                int size = ThreadLocalRandom.current().nextInt(config.getPacketsMin(), config.getPacketsMax() + 1);
 
                 count.incrementAndGet();
                 total.addAndGet(size);

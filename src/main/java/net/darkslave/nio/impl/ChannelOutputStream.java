@@ -29,12 +29,12 @@ public class ChannelOutputStream extends OutputStream {
     }
 
 
-    private final byte[] buffer1 = new byte[1];
-
     @Override
     public void write(int source) throws IOException {
-        buffer1[0] = (byte) source;
-        write(buffer1, 0, 1);
+        byte[] temp = new byte[] {
+            (byte) source
+        };
+        write(temp, 0, 1);
     }
 
 
