@@ -1,8 +1,7 @@
 package net.darkslave.nio;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.nio.channels.ByteChannel;
 
 
 
@@ -12,6 +11,6 @@ import java.io.OutputStream;
 @FunctionalInterface
 public interface RequestHandler {
 
-    public void handle(InputStream input, OutputStream output) throws IOException;
+    public void handle(ByteChannel channel) throws IOException;
 
 }

@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.ByteChannel;
 import net.darkslave.io.Streams;
 
 
@@ -95,6 +96,14 @@ public class Message {
         ByteArrayOutputStream stream = new ByteArrayOutputStream(1024);
         writeTo(source, stream);
         return stream.toByteArray();
+    }
+
+
+    public static Message readFrom(ByteChannel channel) {
+
+
+        // TODO Auto-generated method stub
+        return null;
     }
 
 

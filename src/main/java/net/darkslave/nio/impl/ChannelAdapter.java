@@ -1,10 +1,11 @@
 package net.darkslave.nio.impl;
 
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -12,45 +13,55 @@ import java.util.concurrent.locks.ReentrantLock;
 
 
 
-class ChannelAction {
-    private final SelectionKey  channelKey;
-    private final SocketChannel channel;
+
+public class ChannelAdapter implements ByteChannel {
+    private final SelectionKey channelKey;
+    private final ByteChannel  channel;
     private int   interest;
 
     private final Lock      lock;
     private final Condition done;
 
 
-    public ChannelAction(SelectionKey key) {
+
+    public ChannelAdapter(SelectionKey key) {
+        channelKey = key;
+        channel  = (ByteChannel) key.channel();
+        interest = 0;
+
         lock = new ReentrantLock();
         done = lock.newCondition();
-
-        channelKey = key;
-        channel  = (SocketChannel) key.channel();
-        interest = 0;
     }
 
 
-    public int read(byte[] target, int offset, int length) throws IOException {
-        ByteBuffer buffer = ByteBuffer.wrap(target, offset, length);
-
+    @Override
+    public int read(ByteBuffer buffer) throws IOException {
+        // ожидаем уведомления о возможности чтения
         await(SelectionKey.OP_READ);
-
-        // читаем из канала только доступные данные
+        // и читаем
         return channel.read(buffer);
     }
 
 
-    public void write(byte[] source, int offset, int length) throws IOException {
-        ByteBuffer buffer = ByteBuffer.wrap(source, offset, length);
+    @Override
+    public int write(ByteBuffer buffer) throws IOException {
+        // ожидаем уведомления о возможности записи
+        await(SelectionKey.OP_WRITE);
+        // и пишем
+        return channel.write(buffer);
+    }
 
-        while (buffer.remaining() > 0) {
-            // записываем в канал все данные
-            await(SelectionKey.OP_WRITE);
 
-            channel.write(buffer);
-        }
+    @Override
+    public boolean isOpen() {
+        return channel.isOpen();
+    }
 
+
+    @Override
+    public void close() throws IOException {
+        channelKey.cancel();
+        channel.close();
     }
 
 

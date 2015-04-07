@@ -1,26 +1,27 @@
-package net.darkslave.nio.impl;
+package net.darkslave.nio;
 
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.ReadableByteChannel;
 
 
 
 
 
 public class ChannelInputStream extends InputStream {
-    private static final int SKIP_BUFFER_SIZE = 4096;
-    private final ChannelAction delegate;
+    private final ReadableByteChannel channel;
 
 
-    ChannelInputStream(ChannelAction connection) {
-        this.delegate = connection;
+    public ChannelInputStream(ReadableByteChannel channel) {
+        this.channel = channel;
     }
 
 
     @Override
     public int read(byte[] target, int offset, int length) throws IOException {
-        return delegate.read(target, offset, length);
+        //
+        return 0;
     }
 
 
@@ -30,15 +31,15 @@ public class ChannelInputStream extends InputStream {
     }
 
 
+    private final byte[] buffer1 = new byte[1];
+
     @Override
     public int read() throws IOException {
-        byte[] temp = new byte[1];
-
         while (true) {
-            int read = read(temp, 0, 1);
+            int read = read(buffer1, 0, 1);
 
             if (read == 1)
-                return temp[0] & 255;
+                return buffer1[0] & 255;
 
             if (read < 0)
                 return read;
@@ -46,31 +47,31 @@ public class ChannelInputStream extends InputStream {
     }
 
 
+    private static final int SKIP_BUFFER_SIZE = 1024;
+    private byte[] buffer0;
+
     @Override
     public long skip(long skip) throws IOException {
         if (skip <= 0)
             return 0;
 
-        int size = SKIP_BUFFER_SIZE;
+        if (buffer0 == null)
+            buffer0 = new byte[SKIP_BUFFER_SIZE];
 
-        if (size > skip)
-            size = (int) skip;
-
-        byte[] temp = new byte[size];
         long origin = skip;
 
         while (skip > 0) {
-            int need = size;
+            int need = SKIP_BUFFER_SIZE;
 
             if (need > skip)
                 need = (int) skip;
 
-            int read = read(temp, 0, need);
+            int read = read(buffer0, 0, need);
 
             if (read < 0)
                 break;
 
-            skip -= read;
+            skip-= read;
         }
 
         return origin - skip;
@@ -85,7 +86,7 @@ public class ChannelInputStream extends InputStream {
 
     @Override
     public void close() throws IOException {
-        // do nothing
+        channel.close();
     }
 
 

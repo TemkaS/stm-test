@@ -1,8 +1,7 @@
 package net.darkslave.stm.mynio.tcp.server;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.nio.channels.ByteChannel;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -84,9 +83,9 @@ public class ServerImpl implements net.darkslave.stm.core.Server {
         }
 
         @Override
-        public void handle(InputStream input, OutputStream output) throws IOException {
+        public void handle(ByteChannel channel) throws IOException {
             while (!Thread.interrupted()) {
-                Message messg = Message.readFrom(input);
+                Message messg = Message.readFrom(channel);
 
                 if (messg == null)
                     break;

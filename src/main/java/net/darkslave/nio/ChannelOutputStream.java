@@ -1,25 +1,26 @@
-package net.darkslave.nio.impl;
+package net.darkslave.nio;
 
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.channels.WritableByteChannel;
 
 
 
 
 
 public class ChannelOutputStream extends OutputStream {
-    private final ChannelAction delegate;
+    private final WritableByteChannel channel;
 
 
-    ChannelOutputStream(ChannelAction connection) {
-        this.delegate = connection;
+    public ChannelOutputStream(WritableByteChannel channel) {
+        this.channel = channel;
     }
 
 
     @Override
     public void write(byte[] source, int offset, int length) throws IOException {
-        delegate.write(source, offset, length);
+        //
     }
 
 
@@ -29,12 +30,12 @@ public class ChannelOutputStream extends OutputStream {
     }
 
 
+    private final byte[] buffer1 = new byte[1];
+
     @Override
     public void write(int source) throws IOException {
-        byte[] temp = new byte[] {
-            (byte) source
-        };
-        write(temp, 0, 1);
+        buffer1[0] = (byte) source;
+        write(buffer1, 0, 1);
     }
 
 
@@ -46,7 +47,7 @@ public class ChannelOutputStream extends OutputStream {
 
     @Override
     public void close() throws IOException {
-        // do nothing
+        channel.close();
     }
 
 }

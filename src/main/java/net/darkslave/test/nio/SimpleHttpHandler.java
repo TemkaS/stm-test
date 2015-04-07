@@ -3,11 +3,10 @@ package net.darkslave.test.nio;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import net.darkslave.nio.RequestAcceptor;
@@ -23,13 +22,28 @@ class SimpleHttpHandler implements RequestHandler, RequestAcceptor {
 
 
     @Override
-    public void handle(InputStream inp, OutputStream out) throws IOException {
-        String reqt = readTill(inp, HEADERS_ENDS);
-        logger.debug("request " + reqt);
+    public void handle(ByteChannel channel) throws IOException {
+        byte[] array = new byte[16536];
+        ByteBuffer buffer = ByteBuffer.wrap(array);
 
-        Files.copy(Paths.get("d:\\TEST-1m.txt"), out);
+        int read = channel.read(buffer);
+
+        System.out.println("read = " + read);
+        System.out.println(new String(array, 0, read, "UTF-8"));
+
+        buffer = ByteBuffer.wrap("Hello world".getBytes(StandardCharsets.UTF_8));
+        channel.write(buffer);
 
     }
+
+
+    @Override
+    public boolean accept(InetSocketAddress address) {
+        logger.debug("connect " + address);
+        return true;
+    }
+
+
 
 
     private static String readTill(InputStream input, byte[] what) throws IOException {
@@ -78,12 +92,6 @@ class SimpleHttpHandler implements RequestHandler, RequestAcceptor {
         return -1;
     }
 
-
-    @Override
-    public boolean accept(InetSocketAddress address) {
-        logger.debug("connect " + address);
-        return true;
-    }
 
 }
 

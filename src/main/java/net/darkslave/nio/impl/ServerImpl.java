@@ -1,8 +1,6 @@
 package net.darkslave.nio.impl;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.Channel;
@@ -146,20 +144,20 @@ public class ServerImpl implements Runnable, Server {
             InetSocketAddress address = (InetSocketAddress) channel.getRemoteAddress();
 
             if (!requestAcceptor.accept(address)) {
-                cancelKey(null, clientKey);
+                release(null, clientKey);
                 return;
             }
 
             // создаем новую коннекцию запроса
-            ChannelAction action = new ChannelAction(clientKey);
-            clientKey.attach(action);
+            ChannelAdapter adapter = new ChannelAdapter(clientKey);
+            clientKey.attach(adapter);
 
             // запускаем в отдельном потоке обработку запроса
-            handle(clientKey, action);
+            handle(adapter);
 
         } catch (Exception e) {
             if (clientKey != null) {
-                cancelKey(e, clientKey);
+                release(e, clientKey);
             } else {
                 setLastError(e);
             }
@@ -167,21 +165,17 @@ public class ServerImpl implements Runnable, Server {
     }
 
 
-    private void handle(SelectionKey clientKey, ChannelAction action) {
-        InputStream  input  = new ChannelInputStream (action);
-        OutputStream output = new ChannelOutputStream(action);
-
+    private void handle(ChannelAdapter adapter) {
         workThreadPool.execute(() -> {
             Exception error = null;
             try {
-                requestHandler.handle(input, output);
+                requestHandler.handle(adapter);
             } catch (Exception e) {
                 error = e;
             } finally {
-                cancelKey(error, clientKey);
+                release(error, adapter);
             }
         });
-
     }
 
 
@@ -190,11 +184,11 @@ public class ServerImpl implements Runnable, Server {
      */
     private void signal(SelectionKey clientKey, int option) {
         try {
-            ChannelAction action = (ChannelAction) clientKey.attachment();
-            if (action != null)
-                action.signal(option);
+            ChannelAdapter adapter = (ChannelAdapter) clientKey.attachment();
+            if (adapter != null)
+                adapter.signal(option);
         } catch (IOException e) {
-            cancelKey(e, clientKey);
+            release(e, clientKey);
         }
     }
 
@@ -202,17 +196,17 @@ public class ServerImpl implements Runnable, Server {
     /**
      *  Сброс ключа, закрытие канала и логирование ошибок
      */
-    private void cancelKey(Exception result, SelectionKey clientKey) {
-        clientKey.cancel();
-        clientKey.attach(null);
-        closeChannel(result, clientKey.channel());
+    private void release(Exception result, SelectionKey channelKey) {
+        channelKey.cancel();
+        channelKey.attach(null);
+        release(result, channelKey.channel());
     }
 
 
     /**
      *  Закрытие канала и логирование ошибок
      */
-    private void closeChannel(Exception result, Channel channel) {
+    private void release(Exception result, Channel channel) {
         try {
             channel.close();
         } catch (Exception e) {
