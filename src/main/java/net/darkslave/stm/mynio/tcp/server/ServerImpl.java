@@ -1,33 +1,31 @@
 package net.darkslave.stm.mynio.tcp.server;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.LinkedList;
-import java.util.List;
+import java.net.StandardSocketOptions;
+import java.nio.channels.ByteChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import net.darkslave.nio.Bootstrap;
-import net.darkslave.nio.ErrorHandler;
-import net.darkslave.nio.RequestHandler;
-import net.darkslave.nio.Server;
+import net.darkslave.nio.core.Bootstrap;
+import net.darkslave.nio.core.ErrorHandler;
+import net.darkslave.nio.core.RequestHandler;
 import net.darkslave.stm.core.Message;
 import net.darkslave.stm.core.MessageAcceptor;
+import net.darkslave.stm.core.Server;
 import net.darkslave.stm.core.ServerConfig;
 
 
 
 
 
-public class ServerImpl implements net.darkslave.stm.core.Server {
+public class ServerImpl implements Server {
     private static final Logger logger = LogManager.getLogger(ServerImpl.class);
 
     private final ServerConfig config;
     private final ExecutorService bossThreadPool = Executors.newCachedThreadPool();
     private final ExecutorService workThreadPool = Executors.newCachedThreadPool();
-    private final List<Server> active = new LinkedList<>();
+    private net.darkslave.nio.core.Server server;
     private MessageAcceptor handler;
 
 
@@ -48,31 +46,31 @@ public class ServerImpl implements net.darkslave.stm.core.Server {
         boot.setBossThreadPool(bossThreadPool);
         boot.setWorkThreadPool(workThreadPool);
         boot.setPendingCount(1024);
-        boot.setSelectorDelay(10);
+
+        boot.setServerOption(StandardSocketOptions.SO_RCVBUF, 16536);
+        boot.setServerOption(StandardSocketOptions.SO_REUSEADDR, true);
 
         Worker worker = new Worker(handler);
         boot.setRequestHandler(worker);
         boot.setErrorHandler(worker);
 
-        for (Integer port : config.getServerPort()) {
-            Server server = new net.darkslave.nio.impl.ServerImpl(boot.setAddress(port));
-            server.start();
-            active.add(server);
-        }
+        for (Integer port : config.getServerPort())
+            boot.addAddress(port);
+
+        net.darkslave.nio.core.Server server = new net.darkslave.nio.impl.ServerImpl(boot);
+        server.start();
 
     }
 
 
     @Override
     public void close() throws IOException {
-        try {
-            for (Server server : active)
-                server.stop();
+        if (server != null)
+            server.stop();
 
-        } finally {
-            bossThreadPool.shutdownNow();
-            workThreadPool.shutdownNow();
-        }
+        bossThreadPool.shutdownNow();
+        workThreadPool.shutdownNow();
+
     }
 
 
@@ -84,9 +82,9 @@ public class ServerImpl implements net.darkslave.stm.core.Server {
         }
 
         @Override
-        public void handle(InputStream input, OutputStream output) throws IOException {
+        public void handle(ByteChannel channel) throws IOException {
             while (!Thread.interrupted()) {
-                Message messg = Message.readFrom(input);
+                Message messg = Message.readFrom(channel);
 
                 if (messg == null)
                     break;
